@@ -8,6 +8,7 @@ import (
 	"time"
 	"example.com/calculator/calculatorpb"
 	"example.com/calculator/helper"
+	"io"
 
 	"google.golang.org/grpc"
 )
@@ -43,6 +44,29 @@ func (*server) ReturnSmallerPrimes(req * calculatorpb.ReturnPrimesRequest, resp 
 		resp.Send(res)
 	}
 	return nil
+}
+
+func (*server) ComputeAverage (stream calculatorpb.CalculatorService_ComputeAverageServer) error {
+	fmt.Println("ComputeAverage Function is invoked to demonstrate client side streaming")
+
+	var totalSum int64
+	var totalCount int64
+
+	for {
+		msg, err := stream.Recv()
+		if err == io.EOF {
+			return stream.SendAndClose(&calculatorpb.ComputeAverageResponse{
+				Result: totalSum/totalCount,
+			})
+		}
+		if err != nil {
+			log.Fatalf("Error while reading client stream : %v", err)
+		}
+	
+		totalCount++
+		totalSum += msg.Num
+	}
+	
 }
 
 func main () {
