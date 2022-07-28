@@ -17,8 +17,19 @@ message SumResponse {
     int64 result = 1;
 }
 
+message ReturnPrimesRequest {
+    int64 num = 1;
+}
+
+message ReturnPrimesResponse {
+    int64 result = 1;
+}
+
 service CalculatorService {
 
     //Unary
     rpc Sum(SumRequest) returns (SumResponse) {}
+
+    //Server streaming
+    rpc ReturnSmallerPrimes(ReturnPrimesRequest) returns (stream ReturnPrimesResponse) {}  
 }

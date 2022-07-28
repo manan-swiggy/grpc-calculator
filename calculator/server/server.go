@@ -5,7 +5,9 @@ import (
 	"net"
 	"context"
 	"log"
+	"time"
 	"example.com/calculator/calculatorpb"
+	"example.com/calculator/helper"
 
 	"google.golang.org/grpc"
 )
@@ -25,6 +27,22 @@ func (*server) Sum (ctx context.Context, req *calculatorpb.SumRequest) (resp *ca
 		Result: res,
 	}
 	return resp, nil
+}
+
+func (*server) ReturnSmallerPrimes(req * calculatorpb.ReturnPrimesRequest, resp calculatorpb.CalculatorService_ReturnSmallerPrimesServer) error {
+	fmt.Println("GetSamllerPrimes function invoked for server side streaming")
+
+	primes := helper.Sieve(int(req.Num))
+
+	for _, p := range primes {
+		res := &calculatorpb.ReturnPrimesResponse {
+			Result: int64(p),
+		}
+
+		time.Sleep(1000 * time.Millisecond)
+		resp.Send(res)
+	}
+	return nil
 }
 
 func main () {

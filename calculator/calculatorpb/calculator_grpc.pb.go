@@ -24,6 +24,8 @@ const _ = grpc.SupportPackageIsVersion7
 type CalculatorServiceClient interface {
 	//Unary
 	Sum(ctx context.Context, in *SumRequest, opts ...grpc.CallOption) (*SumResponse, error)
+	//Server streaming
+	ReturnSmallerPrimes(ctx context.Context, in *ReturnPrimesRequest, opts ...grpc.CallOption) (CalculatorService_ReturnSmallerPrimesClient, error)
 }
 
 type calculatorServiceClient struct {
@@ -43,12 +45,46 @@ func (c *calculatorServiceClient) Sum(ctx context.Context, in *SumRequest, opts 
 	return out, nil
 }
 
+func (c *calculatorServiceClient) ReturnSmallerPrimes(ctx context.Context, in *ReturnPrimesRequest, opts ...grpc.CallOption) (CalculatorService_ReturnSmallerPrimesClient, error) {
+	stream, err := c.cc.NewStream(ctx, &CalculatorService_ServiceDesc.Streams[0], "/calculator.CalculatorService/ReturnSmallerPrimes", opts...)
+	if err != nil {
+		return nil, err
+	}
+	x := &calculatorServiceReturnSmallerPrimesClient{stream}
+	if err := x.ClientStream.SendMsg(in); err != nil {
+		return nil, err
+	}
+	if err := x.ClientStream.CloseSend(); err != nil {
+		return nil, err
+	}
+	return x, nil
+}
+
+type CalculatorService_ReturnSmallerPrimesClient interface {
+	Recv() (*ReturnPrimesResponse, error)
+	grpc.ClientStream
+}
+
+type calculatorServiceReturnSmallerPrimesClient struct {
+	grpc.ClientStream
+}
+
+func (x *calculatorServiceReturnSmallerPrimesClient) Recv() (*ReturnPrimesResponse, error) {
+	m := new(ReturnPrimesResponse)
+	if err := x.ClientStream.RecvMsg(m); err != nil {
+		return nil, err
+	}
+	return m, nil
+}
+
 // CalculatorServiceServer is the server API for CalculatorService service.
 // All implementations must embed UnimplementedCalculatorServiceServer
 // for forward compatibility
 type CalculatorServiceServer interface {
 	//Unary
 	Sum(context.Context, *SumRequest) (*SumResponse, error)
+	//Server streaming
+	ReturnSmallerPrimes(*ReturnPrimesRequest, CalculatorService_ReturnSmallerPrimesServer) error
 	mustEmbedUnimplementedCalculatorServiceServer()
 }
 
@@ -58,6 +94,9 @@ type UnimplementedCalculatorServiceServer struct {
 
 func (UnimplementedCalculatorServiceServer) Sum(context.Context, *SumRequest) (*SumResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method Sum not implemented")
+}
+func (UnimplementedCalculatorServiceServer) ReturnSmallerPrimes(*ReturnPrimesRequest, CalculatorService_ReturnSmallerPrimesServer) error {
+	return status.Errorf(codes.Unimplemented, "method ReturnSmallerPrimes not implemented")
 }
 func (UnimplementedCalculatorServiceServer) mustEmbedUnimplementedCalculatorServiceServer() {}
 
@@ -90,6 +129,27 @@ func _CalculatorService_Sum_Handler(srv interface{}, ctx context.Context, dec fu
 	return interceptor(ctx, in, info, handler)
 }
 
+func _CalculatorService_ReturnSmallerPrimes_Handler(srv interface{}, stream grpc.ServerStream) error {
+	m := new(ReturnPrimesRequest)
+	if err := stream.RecvMsg(m); err != nil {
+		return err
+	}
+	return srv.(CalculatorServiceServer).ReturnSmallerPrimes(m, &calculatorServiceReturnSmallerPrimesServer{stream})
+}
+
+type CalculatorService_ReturnSmallerPrimesServer interface {
+	Send(*ReturnPrimesResponse) error
+	grpc.ServerStream
+}
+
+type calculatorServiceReturnSmallerPrimesServer struct {
+	grpc.ServerStream
+}
+
+func (x *calculatorServiceReturnSmallerPrimesServer) Send(m *ReturnPrimesResponse) error {
+	return x.ServerStream.SendMsg(m)
+}
+
 // CalculatorService_ServiceDesc is the grpc.ServiceDesc for CalculatorService service.
 // It's only intended for direct use with grpc.RegisterService,
 // and not to be introspected or modified (even as a copy)
@@ -102,6 +162,12 @@ var CalculatorService_ServiceDesc = grpc.ServiceDesc{
 			Handler:    _CalculatorService_Sum_Handler,
 		},
 	},
-	Streams:  []grpc.StreamDesc{},
+	Streams: []grpc.StreamDesc{
+		{
+			StreamName:    "ReturnSmallerPrimes",
+			Handler:       _CalculatorService_ReturnSmallerPrimes_Handler,
+			ServerStreams: true,
+		},
+	},
 	Metadata: "calculatorpb/calculator.proto",
 }

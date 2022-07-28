@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"log"
 	"context"
+	"io"
 
 	"example.com/calculator/calculatorpb"
 	"google.golang.org/grpc"
@@ -21,7 +22,9 @@ func main () {
 
 	c := calculatorpb.NewCalculatorServiceClient(cc)
 
-	CalculateSum(c)
+	// CalculateSum(c)
+
+	GetSmallerPrimes(c)
 }
 
 func CalculateSum (c calculatorpb.CalculatorServiceClient) {
@@ -40,4 +43,30 @@ func CalculateSum (c calculatorpb.CalculatorServiceClient) {
 	}
 
 	log.Printf("Response from Sum Unary call: %v", resp.Result)
+}
+
+func GetSmallerPrimes(c calculatorpb.CalculatorServiceClient) {
+	fmt.Println("Starting server side grpc streaming")
+
+	req := calculatorpb.ReturnPrimesRequest{
+		Num: 15,
+	}
+
+	respStream, err := c.ReturnSmallerPrimes(context.Background(), &req)
+	if err != nil {
+		log.Fatal("error while calling GetSmallerPrimes server side streaming: %v", err)
+	}
+
+	for {
+		msg, err := respStream.Recv()
+		if err == io.EOF {
+			break
+		}
+
+		if err != nil {
+			log.Fatal("error whilw receiving server stream: %v", err)
+		}
+
+		fmt.Println("Response from GetSmallerPrimes server: %v", msg.Result)
+	}
 }
