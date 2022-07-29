@@ -69,6 +69,48 @@ func (*server) ComputeAverage (stream calculatorpb.CalculatorService_ComputeAver
 	
 }
 
+func (*server) FindMaximum (stream calculatorpb.CalculatorService_FindMaximumServer) error {
+	fmt.Println("FindMaximum Function is invoked to demonstrate Bi-directional streaming")
+
+	var max int64
+	var IsMaxSet bool = false
+
+	for {
+		req, err := stream.Recv()
+		if err == io.EOF {
+			return nil
+		}
+
+		if err != nil {
+			log.Fatalf("error while receiving data from FindMaximum client : %v", err)
+			return err
+		}
+		num := req.GetNum()
+
+		if !IsMaxSet {
+			max = num
+			IsMaxSet = true
+			err := stream.Send(&calculatorpb.FindMaximumResponse{
+				Result: max,
+			})
+			if err != nil {
+				fmt.Println("Error while sending newnum to stream : ", err)
+			}
+		} else {
+			if int64(num) > max {
+				max = int64(num)
+				err = stream.Send(&calculatorpb.FindMaximumResponse{
+					Result: max,
+				})
+				if err != nil {
+					fmt.Println("Error while sending newnum to stream : ", err)
+				}
+			}
+		}
+
+	}
+}
+
 func main () {
 	fmt.Println("vim-go")
 

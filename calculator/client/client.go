@@ -27,7 +27,9 @@ func main () {
 
 	// GetSmallerPrimes(c)
 
-	ComputeAverage(c)
+	// ComputeAverage(c)
+
+	FindMaximum(c)
 }
 
 func CalculateSum (c calculatorpb.CalculatorServiceClient) {
@@ -109,4 +111,60 @@ func ComputeAverage(c calculatorpb.CalculatorServiceClient) {
 	}
 
 	fmt.Println("\n****Response From Server : ", resp.GetResult())
+}
+
+func FindMaximum (c calculatorpb.CalculatorServiceClient) {
+	fmt.Println("Starting bi-directional streaming by calling FindMaximum over GRPC ...")
+
+	requests := []*calculatorpb.FindMaximumRequest{
+		&calculatorpb.FindMaximumRequest {
+			Num: 12,
+		},
+		&calculatorpb.FindMaximumRequest {
+			Num: 34,
+		},
+		&calculatorpb.FindMaximumRequest {
+			Num: 99,
+		},
+		&calculatorpb.FindMaximumRequest {
+			Num: 1,
+		},
+	}
+
+	stream, err := c.FindMaximum(context.Background())
+	if err != nil {
+		log.Fatalf("error occured while performing client side streaming: %v", err)
+	}
+
+	waitchan := make(chan struct{})
+
+	go func (requests []*calculatorpb.FindMaximumRequest) {
+		for _, req := range requests {
+			fmt.Println("\n Sending Request ...", req.Num)
+			err := stream.Send(req)
+			if err != nil {
+				log.Fatalf("error while sending request to FindMaximum service : %v", err)
+			}
+			time.Sleep(1000 * time.Millisecond)
+		}
+		stream.CloseSend()
+	}(requests)
+
+	go func () {
+		for {
+			resp, err := stream.Recv()
+			if err == io.EOF {
+				close(waitchan)
+				return
+			}
+
+			if err != nil {
+				log.Fatalf("error receiving reponse from server: %v", err)
+			}
+
+			fmt.Println("\n Response from Server: ", resp.GetResult())
+		}
+	} ()
+
+	<- waitchan
 }
